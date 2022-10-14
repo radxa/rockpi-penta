@@ -362,8 +362,11 @@ def display_process(display_queue):
 
             last_page[0] = display_list[0] if action else last_page[0] # refresh displays the last page
             if last_page[0]:
-                for item in last_page[0].get_page_text():
-                    draw.text(**item)
+                try:
+                    for item in last_page[0].get_page_text():
+                        draw.text(**item)
+                except Exception as ex:
+                    print(ex)
                 disp_show()
             if action:
                 display_list.pop(0)
