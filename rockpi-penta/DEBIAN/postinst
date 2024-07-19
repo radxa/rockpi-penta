@@ -31,7 +31,7 @@ armbian_require_overlay() {
   fi
 }
 
-requirement_path="/usr/bin/rockpi-penta"
+requirement_path="/usr/bin/rockpi-penta/requirements.txt"
 
 if [ "$(python3 -c 'import sys; print(f"{sys.version_info.minor >= 11}")')" = "True" ]; then
   pip3 install -r $requirement_path --break-system-packages
