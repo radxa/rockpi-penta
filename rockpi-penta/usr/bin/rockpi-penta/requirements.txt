@@ -1,11 +1,11 @@
-Adafruit-Blinka==8.39.0
-adafruit-circuitpython-busdevice==5.2.9
-adafruit-circuitpython-connectionmanager==3.1.1
+Adafruit-Blinka==8.35.0
+adafruit-circuitpython-busdevice==5.2.6
+adafruit-circuitpython-connectionmanager==1.0.1
 adafruit-circuitpython-framebuf==1.6.5
-adafruit-circuitpython-requests==4.1.4
+adafruit-circuitpython-requests==3.2.0
 adafruit-circuitpython-ssd1306==2.12.17
 adafruit-circuitpython-typing==1.10.3
-Adafruit-PlatformDetect==3.72.1
+Adafruit-PlatformDetect==3.62.0
 Adafruit-PureIO==1.1.11
 pyftdi==0.55.4
 pyserial==3.5
