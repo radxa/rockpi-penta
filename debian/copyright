@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: rockpi-penta
+Upstream-Contact: Radxa <dev@radxa.com>
+Source: https://github.com/radxa/rockpi-penta
+
+Files: *
+Copyright: 2024 Radxa <dev@radxa.com>
+License: MIT
+
+Files: fonts/DejaVuSansMono-Bold.ttf fonts/DejaVuSansMono.ttf
+Copyright: 2003 Bitstream, Inc.
+License: Public-Domain
+
+Files: fonts/NotoSansMono-Bold.ttf fonts/NotoSansMono-Regular.ttf
+Copyright: 2022 The Noto Project Authors
+License: OFL

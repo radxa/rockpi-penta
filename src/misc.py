@@ -53,7 +53,7 @@ def read_conf():
 
     try:
         cfg = ConfigParser()
-        cfg.read('/etc/rockpi-penta.conf')
+        cfg.read('/etc/rockpi-penta/rockpi-penta.conf')
         # fan
         conf['fan']['lv0'] = cfg.getfloat('fan', 'lv0')
         conf['fan']['lv1'] = cfg.getfloat('fan', 'lv1')

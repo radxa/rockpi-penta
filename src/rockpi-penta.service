@@ -1,0 +1,13 @@
+[Unit]
+Description=Rockpi SATA Hat
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 main.py
+KillSignal=SIGINT
+EnvironmentFile=/etc/rockpi-penta/environment
+Restart=on-failure
+WorkingDirectory=/usr/share/rockpi-penta
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+src/fan.py usr/share/rockpi-penta/
+src/main.py usr/share/rockpi-penta/
+src/misc.py usr/share/rockpi-penta/
+src/oled.py usr/share/rockpi-penta/
+src/requirements.txt usr/share/rockpi-penta/
+src/env/ usr/share/rockpi-penta/
+src/fonts/ usr/share/rockpi-penta/
+src/overlays/ usr/share/rockpi-penta/
+src/rockpi-penta.conf etc/rockpi-penta/
+src/rockpi-penta.service lib/systemd/system/

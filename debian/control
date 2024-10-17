@@ -1,0 +1,17 @@
+Source: rockpi-penta
+Section: utils
+Priority: optional
+Maintainer: Radxa <dev@radxa.com>
+Build-Depends: debhelper (>= 12), python3
+Standards-Version: 4.5.0
+Homepage: https://wiki.radxa.com/Penta_SATA_HAT
+Vcs-Git: https://github.com/radxa/rockpi-penta
+Vcs-Browser: https://github.com/radxa/rockpi-penta
+
+Package: rockpi-penta
+Architecture: all
+Pre-Depends: python3-dev, device-tree-compiler
+Depends: python3, ${misc:Depends}, ${python3:Depends}, python3-pip, python3-libgpiod, python3-pillow, procps
+Description: Fan controller for Rock Pi with OLED display
+ A driver written in Python that allows to manage the fan and OLED display of RockPi Penta Hat
+ on various models of Rock Pi and Raspberry Pi.
