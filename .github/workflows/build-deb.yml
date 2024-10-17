@@ -8,13 +8,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Build DEB package
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
         run: |
-          chmod -R 775 rockpi-penta/DEBIAN/
-          dpkg-deb --build -Z gzip rockpi-penta
-      - name: Upload DEB package
+          sudo apt-get -y update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            debhelper \
+            devscripts \
+            dpkg-dev \
+            dh-python
+
+      - name: Build package
+        run: |
+          OUTPUT_DIR=_out dpkg-buildpackage -us -uc \
+            --buildinfo-option="-u_out" \
+            --buildinfo-option="-O" \
+            --changes-option="-u_out" \
+            --changes-option="-O_out/rockpi-penta.changes"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rockpi-penta.deb
-          path: rockpi-penta.deb
+          name: rockpi-penta-artifacts
+          path: _out/*
+
+      - name: Release
+        uses: crazy-max/ghaction-github-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: _out/rockpi-penta.changes
+          draft: true
+          files: _out/*

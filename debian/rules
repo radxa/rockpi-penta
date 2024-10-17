@@ -4,5 +4,12 @@
 # Output every command that modifies files on the build system.
 #export DH_VERBOSE = 1
 
+OUTPUT_DIR?=..
+
 %:
 	dh $@
+
+override_dh_builddeb:
+	mkdir -p $(OUTPUT_DIR)
+	mv -n ../rockpi-penta_*.dsc ../rockpi-penta_*.tar.* $(OUTPUT_DIR)
+	dh_builddeb $@ --destdir=$(OUTPUT_DIR)
