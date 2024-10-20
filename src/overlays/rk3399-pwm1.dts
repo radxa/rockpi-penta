@@ -1,24 +1,22 @@
 /dts-v1/;
+/plugin/;
 
 / {
-
 	metadata {
-		title = "Enable PWM1";
+		title = "Enable I2C7";
 		compatible = "rockchip,rk3399";
 		category = "misc";
-		exclusive = "GPIO4_C6";
-		description = "Enable PWM1 on pin 13.";
+		exclusive = "GPIO2_A7", "GPIO2_B0";
+		description = "Enable I2C7 on pin 3 & 5.";
 	};
 
 	fragment@0 {
-		target = <0xffffffff>;
+		target = <&i2c7>;
 
 		__overlay__ {
 			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c7_xfer>;
 		};
-	};
-
-	__fixups__ {
-		pwm1 = "/fragment@0:target:0";
 	};
 };
