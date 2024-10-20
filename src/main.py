@@ -48,6 +48,7 @@ if __name__ == '__main__':
         try:
             p3.join()
         except KeyboardInterrupt:
+            misc.conf['run'].value = 0
             print("GoodBye ~")
             oled.goodbye()
 
