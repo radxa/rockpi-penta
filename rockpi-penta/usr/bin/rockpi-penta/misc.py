@@ -69,6 +69,7 @@ def read_conf():
         # other
         conf['slider']['auto'] = cfg.getboolean('slider', 'auto')
         conf['slider']['time'] = cfg.getfloat('slider', 'time')
+        conf['slider']['page'] = cfg.getint('slider', 'page', fallback=0)
         conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
         conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
     except Exception:
@@ -140,6 +141,8 @@ def get_disk_info(cache={}):
 
 
 def slider_next(pages):
+    if len(pages.keys()) == 1:
+        return list(pages.values())[0]
     conf['idx'].value += 1
     return pages[conf['idx'].value % len(pages)]
 
