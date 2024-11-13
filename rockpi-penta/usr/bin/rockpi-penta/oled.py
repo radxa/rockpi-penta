@@ -80,36 +80,43 @@ def put_disk_info():
     return page
 
 
-def gen_pages():
-    pages = {
-        0: [
+def gen_pages(pages):
+    if pages == None:
+        pages = [0, 1, 2]
+    result = {}
+    if 0 in pages:
+        result[0] = [
             {'xy': (0, -2), 'text': misc.get_info('up'), 'fill': 255, 'font': font['11']},
             {'xy': (0, 10), 'text': misc.get_cpu_temp(), 'fill': 255, 'font': font['11']},
             {'xy': (0, 21), 'text': misc.get_info('ip'), 'fill': 255, 'font': font['11']},
-        ],
-        1: [
+        ]
+    if 1 in pages:
+        result[1] = [
             {'xy': (0, 2), 'text': misc.get_info('cpu'), 'fill': 255, 'font': font['12']},
             {'xy': (0, 18), 'text': misc.get_info('men'), 'fill': 255, 'font': font['12']},
-        ],
-        2: put_disk_info()
-    }
+        ]
+    if 2 in pages:
+        result[2] = put_disk_info()
+    return result
 
-    return pages
 
-
-def slider(lock):
+def slider(lock, pages=None):
     with lock:
-        for item in misc.slider_next(gen_pages()):
+        for item in misc.slider_next(gen_pages(pages)):
             draw.text(**item)
         disp_show()
 
 
 def auto_slider(lock):
-    while misc.conf['slider']['auto']:
-        slider(lock)
+    pages = [0, 1, 2]
+
+    if not misc.conf['slider']['auto']:
+        if (static_page := misc.conf['slider'].get('page', 0)) in (0, 1, 2):
+            pages = [static_page]
+
+    while True:
+        slider(lock, pages)
         misc.slider_sleep()
-    else:
-        slider(lock)
 
 
 if __name__ == '__main__':
