@@ -113,6 +113,8 @@ def auto_slider(lock):
     if not misc.conf['slider']['auto']:
         if (static_page := misc.conf['slider'].get('page', 0)) in (0, 1, 2):
             pages = [static_page]
+        else:
+            pages = [0]
 
     while True:
         slider(lock, pages)
