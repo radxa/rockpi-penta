@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import os.path
 import time
 import traceback
@@ -46,26 +47,56 @@ class Pwm:
 
 
 class Gpio:
+    def __init__(self, period_s):
+        self.is_zero_duty = False 
+        try:
+            fan_chip_env = os.environ.get('FAN_CHIP', '0') 
+            fan_line_env = os.environ.get('FAN_LINE', '27') 
+            
+            self.chip_obj = gpiod.Chip(fan_chip_env)
+            self.line = self.chip_obj.get_line(int(fan_line_env))
+            self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
+            
+            self.value = [period_s / 2.0, period_s / 2.0] 
+            self.period_s = period_s
+            self.thread = threading.Thread(target=self.tr, daemon=True)
+            self.thread.start()
+        except Exception as e_gpio_init:
+            raise 
 
     def tr(self):
-        while True:
-            self.line.set_value(1)
-            time.sleep(self.value[0])
-            self.line.set_value(0)
-            time.sleep(self.value[1])
+        try:
+            while True:
+                if self.is_zero_duty: 
+                    self.line.set_value(0) 
+                    time.sleep(self.period_s) 
+                else:
+                    high_sleep = max(0.0, self.value[0])
+                    low_sleep = max(0.0, self.value[1])
+                    if high_sleep + low_sleep < self.period_s * 0.9: # Heuristic for significant difference
+                       low_sleep = self.period_s - high_sleep
+                       low_sleep = max(0.0, low_sleep) # Ensure non-negative
 
-    def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
-        self.value = [period_s / 2, period_s / 2]
-        self.period_s = period_s
-        self.thread = threading.Thread(target=self.tr, daemon=True)
-        self.thread.start()
+                    self.line.set_value(1)
+                    time.sleep(high_sleep) 
+                    self.line.set_value(0)
+                    time.sleep(low_sleep) 
+        except Exception as e_tr:
+            pass 
 
-    def write(self, duty):
-        self.value[1] = duty * self.period_s
-        self.value[0] = self.period_s - self.value[1]
+    def write(self, duty: float):
+        if not hasattr(self, 'line'):
+            return 
 
+        if duty <= 0.001:  # Treat near-zero as zero
+            self.is_zero_duty = True
+            self.value[0] = 0.0 
+            self.value[1] = self.period_s 
+        else:
+            self.is_zero_duty = False
+            duty = min(duty, 1.0) # Hard code duty cycle at 1.0
+            self.value[0] = duty * self.period_s
+            self.value[1] = self.period_s - self.value[0]
 
 def read_temp():
     with open('/sys/class/thermal/thermal_zone0/temp') as f:
