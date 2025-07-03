@@ -149,10 +149,28 @@ def slider_sleep():
 
 
 def fan_temp2dc(t):
-    for lv, dc in lv2dc.items():
-        if t >= conf['fan'][lv]:
-            return dc
-    return 0.999
+    t_lv0 = float(conf['fan']['lv0'])
+    t_lv1 = float(conf['fan']['lv1'])
+    t_lv2 = float(conf['fan']['lv2'])
+    t_lv3 = float(conf['fan']['lv3'])
+
+    dc_lv0 = 0.25 
+    dc_lv1 = 0.50 
+    dc_lv2 = 0.75 
+    dc_lv3 = 1.00 
+
+    dc_to_return = 0.0 
+
+    if t >= t_lv3:
+        dc_to_return = dc_lv3
+    elif t >= t_lv2:
+        dc_to_return = dc_lv2
+    elif t >= t_lv1:
+        dc_to_return = dc_lv1
+    elif t >= t_lv0:
+        dc_to_return = dc_lv0
+
+    return dc_to_return
 
 
 def fan_switch():
