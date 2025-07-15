@@ -58,7 +58,7 @@ def goodbye():
 
 def put_disk_info():
     k, v = misc.get_disk_info()
-    text1 = 'Disk: {} {}'.format(k[0], v[0])
+    text1 = 'Disk: {:>4} {:>3}'.format(k[0], v[0])
 
     if len(k) == 5:
         text2 = '{} {}  {} {}'.format(k[1], v[1], k[2], v[2])
@@ -73,6 +73,12 @@ def put_disk_info():
         page = [
             {'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['12']},
             {'xy': (0, 18), 'text': text2, 'fill': 255, 'font': font['12']},
+        ]
+    elif len(k) == 2:
+        text2 = '{:>10} {:>3}'.format(k[1], v[1])
+        page = [
+            {'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['14']},
+            {'xy': (0, 19), 'text': text2, 'fill': 255, 'font': font['14']},
         ]
     else:
         page = [{'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['14']}]
