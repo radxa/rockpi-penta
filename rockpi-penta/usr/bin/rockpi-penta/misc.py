@@ -31,10 +31,6 @@ def check_call(cmd):
     return subprocess.check_call(cmd, shell=True)
 
 
-def get_blk():
-    conf['disk'] = [x for x in check_output(cmds['blk']).strip().split('\n') if x.startswith('sd')]
-
-
 def get_info(s):
     return check_output(cmds[s])
 
