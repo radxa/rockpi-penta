@@ -31,10 +31,6 @@ def check_call(cmd):
     return subprocess.check_call(cmd, shell=True)
 
 
-def get_blk():
-    conf['disk'] = [x for x in check_output(cmds['blk']).strip().split('\n') if x.startswith('sd')]
-
-
 def get_info(s):
     return check_output(cmds[s])
 
@@ -71,6 +67,9 @@ def read_conf():
         conf['slider']['time'] = cfg.getfloat('slider', 'time')
         conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
         conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
+        # disks
+        if 'disk' in cfg.sections():
+            conf['disk'] = cfg['disk']
     except Exception:
         traceback.print_exc()
         # fan
@@ -130,9 +129,9 @@ def get_disk_info(cache={}):
         info = {}
         cmd = "df -h | awk '$NF==\"/\"{printf \"%s\", $5}'"
         info['root'] = check_output(cmd)
-        for x in conf['disk']:
-            cmd = "df -Bg | awk '$1==\"/dev/{}\" {{printf \"%s\", $5}}'".format(x)
-            info[x] = check_output(cmd)
+        for name in conf['disk']:
+            cmd = "df -Bg | awk '$1==\"/dev/{}\" {{printf \"%s\", $5}}'".format(conf['disk'][name])
+            info[name] = check_output(cmd)
         cache['info'] = list(zip(*info.items()))
         cache['time'] = time.time()
 
