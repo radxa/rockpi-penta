@@ -2,6 +2,12 @@ name: Build DEB Package
 
 on:
   push:
+    branches:
+      - master
+      - gpiod-v2-migration
+  pull_request:
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -9,12 +15,32 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Get version from DEBIAN/control
+        id: get_version
+        run: |
+          VERSION=$(grep '^Version:' rockpi-penta/DEBIAN/control | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+      
       - name: Build DEB package
         run: |
           chmod -R 775 rockpi-penta/DEBIAN/
           dpkg-deb --build -Z gzip rockpi-penta
-      - name: Upload DEB package
+          # Rename to include version
+          mv rockpi-penta.deb rockpi-penta_${{ steps.get_version.outputs.version }}_all.deb
+      
+      - name: Upload DEB package as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rockpi-penta.deb
-          path: rockpi-penta.deb
+          name: rockpi-penta_${{ steps.get_version.outputs.version }}_all
+          path: rockpi-penta_${{ steps.get_version.outputs.version }}_all.deb
+          retention-days: 30
+      
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: rockpi-penta_${{ steps.get_version.outputs.version }}_all.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

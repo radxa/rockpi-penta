@@ -96,16 +96,29 @@ def read_conf():
 
 def read_key(pattern, size):
     CHIP_NAME = os.environ['BUTTON_CHIP']
-    LINE_NUMBER = os.environ['BUTTON_LINE']
+    # GPIOD v2 requires /dev/gpiochipX path
+    if not CHIP_NAME.startswith('/dev/'):
+        CHIP_NAME = f'/dev/gpiochip{CHIP_NAME}'
+    LINE_NUMBER = int(os.environ['BUTTON_LINE'])
 
     s = ''
-    chip = gpiod.Chip(str(CHIP_NAME))
-    line = chip.get_line(int(LINE_NUMBER))
-    line.request(consumer='hat_button', type=gpiod.LINE_REQ_DIR_OUT)
-    line.set_value(1)
+    
+    # GPIOD v2 API - Button should be INPUT to read values
+    line_request = gpiod.request_lines(
+        CHIP_NAME,
+        consumer='hat_button',
+        config={
+            LINE_NUMBER: gpiod.LineSettings(
+                direction=gpiod.line.Direction.INPUT,
+                bias=gpiod.line.Bias.PULL_UP
+            )
+        }
+    )
 
     while True:
-        s = s[-size:] + str(line.get_value())
+        # GPIOD v2 returns Value enum, convert to int: ACTIVE=1, INACTIVE=0
+        value = line_request.get_value(LINE_NUMBER)
+        s = s[-size:] + str(1 if value == gpiod.line.Value.ACTIVE else 0)
         for t, p in pattern.items():
             if p.match(s):
                 return t
