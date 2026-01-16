@@ -5,6 +5,7 @@ import time
 import subprocess
 import multiprocessing as mp
 import traceback
+import argparse
 
 import gpiod
 from configparser import ConfigParser
@@ -48,12 +49,12 @@ def get_cpu_temp():
     return temp
 
 
-def read_conf():
+def read_conf(config_file):
     conf = defaultdict(dict)
 
     try:
         cfg = ConfigParser()
-        cfg.read('/etc/rockpi-penta.conf')
+        cfg.read(config_file)
         # fan
         conf['fan']['lv0'] = cfg.getfloat('fan', 'lv0')
         conf['fan']['lv1'] = cfg.getfloat('fan', 'lv1')
@@ -71,7 +72,7 @@ def read_conf():
         conf['slider']['time'] = cfg.getfloat('slider', 'time')
         conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
         conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
-    except Exception:
+    except Exception as e:
         traceback.print_exc()
         # fan
         conf['fan']['lv0'] = 35
@@ -96,16 +97,23 @@ def read_conf():
 
 def read_key(pattern, size):
     CHIP_NAME = os.environ['BUTTON_CHIP']
-    LINE_NUMBER = os.environ['BUTTON_LINE']
+    LINE_NUMBER = int(os.environ['BUTTON_LINE'])
 
     s = ''
     chip = gpiod.Chip(str(CHIP_NAME))
-    line = chip.get_line(int(LINE_NUMBER))
-    line.request(consumer='hat_button', type=gpiod.LINE_REQ_DIR_OUT)
-    line.set_value(1)
+    line_request = chip.request_lines(
+        consumer='hat_button',
+        config={
+            LINE_NUMBER: gpiod.LineSettings(
+                direction=gpiod.line.Direction.OUTPUT,
+                output_value=gpiod.line.Value.ACTIVE
+            )
+        }
+    )
 
     while True:
-        s = s[-size:] + str(line.get_value())
+        value = line_request.get_value(LINE_NUMBER)
+        s = s[-size:] + str(int(value.value))
         for t, p in pattern.items():
             if p.match(s):
                 return t
@@ -163,5 +171,8 @@ def get_func(key):
     return conf['key'].get(key, 'none')
 
 
-conf = {'disk': [], 'idx': mp.Value('d', -1), 'run': mp.Value('d', 1)}
-conf.update(read_conf())
+def init_conf(config_file):
+    global conf
+    conf = {'disk': [], 'idx': mp.Value('d', -1), 'run': mp.Value('d', 1)}
+    conf.update(read_conf(config_file))
+

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import queue
 import threading
 import traceback
@@ -26,6 +27,14 @@ action = {
 }
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='RockPi Penta HAT Controller')
+    parser.add_argument('-c', '--config', type=str, default='/etc/rockpi-penta.conf',
+                        help='Path to configuration file (default: /etc/rockpi-penta.conf)')
+    # Add more arguments here as needed
+    return parser.parse_args()
+
+
 def receive_key(q):
     while True:
         func = misc.get_func(q.get())
@@ -33,6 +42,8 @@ def receive_key(q):
 
 
 if __name__ == '__main__':
+    args = parse_arguments()
+    misc.init_conf(args.config)
 
     if top_board:
         oled.welcome()

@@ -47,10 +47,11 @@ def welcome():
     draw.text((0, 0), 'ROCKPi SATA HAT', font=font['14'], fill=255)
     draw.text((32, 16), 'Loading...', font=font['12'], fill=255)
     disp_show()
+    time.sleep(2)
 
 
 def goodbye():
-    draw.text((32, 8), 'Good Bye ~', font=font['14'], fill=255)
+    draw.text((32, 8), 'Good Bye', font=font['14'], fill=255)
     disp_show()
     time.sleep(2)
     disp_show()  # clear
