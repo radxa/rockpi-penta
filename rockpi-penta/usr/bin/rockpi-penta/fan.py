@@ -6,6 +6,7 @@ import threading
 
 import hatgpio
 import misc
+import temps
 
 pin = None
 
@@ -82,19 +83,40 @@ class Gpio:
         self.value = [self.period_s - low, low]
 
 
-def read_temp():
-    with open('/sys/class/thermal/thermal_zone0/temp') as f:
-        t = int(f.read().strip()) / 1000.0
-    return t
+CPU_INTERVAL = 10   # seconds between temperature reads
+DISK_INTERVAL = 30  # disks warm up and cool down over minutes
+
+
+def read_source(warned={}):
+    """(temperature, levels, description) for the configured source.
+
+    With source = disk the hottest selected disk is used, against the disk_lv*
+    thresholds. When no disk can be read the CPU and its own thresholds take
+    over, with a warning, so the fan is never left without a reference.
+    """
+    if misc.conf['fan']['source'] == 'disk':
+        disks = temps.disk_temps(misc.conf['fan']['disks'])
+        if disks:
+            warned.pop('disk', None)
+            hottest = max(disks, key=disks.get)
+            return disks[hottest], 'disk_', f'{hottest} {disks[hottest]:.0f}°C'
+        if not warned.get('disk'):
+            warned['disk'] = True
+            print("Warning: no disk temperature readable (is the drivetemp module "
+                  "loaded?), following the CPU instead")
+    t = temps.cpu_temp()
+    return t, '', f'cpu {t:.0f}°C'
 
 
 def get_dc(cache={}):
     if misc.conf['run'].value == 0:
         return misc.duty2dc(misc.FAN_DUTY_OFF)
 
-    if time.time() - cache.get('time', 0) > 10:
+    interval = DISK_INTERVAL if misc.conf['fan']['source'] == 'disk' else CPU_INTERVAL
+    if time.time() - cache.get('time', 0) > interval:
         cache['time'] = time.time()
-        cache['dc'] = misc.fan_temp2dc(read_temp())
+        t, levels, _ = read_source()
+        cache['dc'] = misc.fan_temp2dc(t, levels)
 
     return cache['dc']
 

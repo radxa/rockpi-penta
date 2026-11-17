@@ -61,6 +61,12 @@ CONF_KEYS = [
     ('fan', 'lv1', 40.0, float, ()),
     ('fan', 'lv2', 45.0, float, ()),
     ('fan', 'lv3', 50.0, float, ()),
+    ('fan', 'source', 'cpu', str, ()),
+    ('fan', 'disks', 'auto', str, ()),
+    ('fan', 'disk_lv0', 35.0, float, ()),
+    ('fan', 'disk_lv1', 40.0, float, ()),
+    ('fan', 'disk_lv2', 43.0, float, ()),
+    ('fan', 'disk_lv3', 46.0, float, ()),
     ('key', 'click', 'slider', str, ()),
     ('key', 'twice', 'switch', str, ()),
     ('key', 'press', 'none', str, ()),
@@ -107,6 +113,14 @@ def read_conf(path=CONF_FILE):
                 print(f"Warning: [{sec}] {name} in {path} is not valid, using {default}")
             break
         conf[section][key] = value
+
+    source = conf['fan']['source'].lower()
+    if source not in ('cpu', 'disk'):
+        print(f"Warning: [fan] source = {source} in {path} is not cpu or disk, using cpu")
+        source = 'cpu'
+    conf['fan']['source'] = source
+    disks = conf['fan']['disks'].lower()
+    conf['fan']['disks'] = disks if disks in ('auto', 'all') else disks.replace(',', ' ').split()
 
     extra_disks = cfg.get('disk', 'extra', fallback="").strip()
     conf['disk'] = [d.strip() for d in extra_disks.split(",") if d.strip()] if extra_disks else []
@@ -188,19 +202,16 @@ def get_slide_time():
 def get_sleep_time():
     return conf['oled']['sleep']
 
-def fan_temp2dc(t):
-
+def fan_temp2dc(t, levels=''):
+    """Fan setting for temperature t, against the lv0..lv3 thresholds
+    (levels='') or the disk_lv0..disk_lv3 ones (levels='disk_')."""
     result = FAN_DUTY_OFF
     for lv, dc in lv2dc.items():
-        if t >= conf['fan'][lv]:
+        if t >= conf['fan'][levels + lv]:
             result = dc
             break
 
-    #print(f"t = {t:.3f}°C -> {result:.3f}")
-
-    duty = duty2dc(result)
-
-    return duty
+    return duty2dc(result)
 
 
 def fan_switch():

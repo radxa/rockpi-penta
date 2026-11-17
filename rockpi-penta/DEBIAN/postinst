@@ -39,6 +39,8 @@ pip install adafruit-circuitpython-ssd1306
 deactivate 
 
 
+modprobe drivetemp 2>/dev/null || echo "drivetemp is not available: the fan will follow the CPU"
+
 systemctl enable rockpi-penta.service
 
 model=$(tr -d '\0' </proc/device-tree/model)
