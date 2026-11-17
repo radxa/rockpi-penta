@@ -1,0 +1,4 @@
+# Adafruit Blinka, which drives the OLED, opens the Raspberry Pi 5 header GPIO as
+# gpiochip4. Newer kernels number that chip differently (gpiochip0, gpiochip15...),
+# so give it that name whatever number it gets. Matches nothing on other boards.
+SUBSYSTEM=="gpio", KERNEL=="gpiochip*", DRIVERS=="pinctrl-rp1", SYMLINK+="gpiochip4"

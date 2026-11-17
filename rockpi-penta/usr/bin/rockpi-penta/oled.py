@@ -10,14 +10,15 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 import multiprocessing as mp
+import threading
 
 import misc
 
 font = {
-    '10': ImageFont.truetype('fonts/DejaVuSansMono-Bold.ttf', 10),
-    '11': ImageFont.truetype('fonts/DejaVuSansMono-Bold.ttf', 11),
-    '12': ImageFont.truetype('fonts/DejaVuSansMono-Bold.ttf', 12),
-    '14': ImageFont.truetype('fonts/DejaVuSansMono-Bold.ttf', 14),
+    '10': ImageFont.truetype('fonts/DejaVuSansMono.ttf', 10),
+    '11': ImageFont.truetype('fonts/DejaVuSansMono.ttf', 11),
+    '12': ImageFont.truetype('fonts/DejaVuSansMono.ttf', 12),
+    '14': ImageFont.truetype('fonts/DejaVuSansMono.ttf', 14),
 }
 
 
@@ -58,18 +59,23 @@ def goodbye():
 
 def put_disk_info():
     k, v = misc.get_disk_info()
-    text1 = 'Disk: {} {}'.format(k[0], v[0])
+    text1 = '{} {}'.format(k[0], v[0])
 
-    if len(k) == 5:
+    l = len(k)
+    if l > 3:
         text2 = '{} {}  {} {}'.format(k[1], v[1], k[2], v[2])
-        text3 = '{} {}  {} {}'.format(k[3], v[3], k[4], v[4])
+        text3 = '{} {}'.format(k[3], v[3])
+        if l > 4:
+            text3 += '{} {}'.format(k[4], v[4])
         page = [
             {'xy': (0, -2), 'text': text1, 'fill': 255, 'font': font['11']},
             {'xy': (0, 10), 'text': text2, 'fill': 255, 'font': font['11']},
             {'xy': (0, 21), 'text': text3, 'fill': 255, 'font': font['11']},
         ]
-    elif len(k) == 3:
-        text2 = '{} {}  {} {}'.format(k[1], v[1], k[2], v[2])
+    elif l > 1:
+        text2 = '{} {}'.format(k[1], v[1])
+        if l > 2:
+            text2 += '{} {}'.format(k[2], v[2])
         page = [
             {'xy': (0, 2), 'text': text1, 'fill': 255, 'font': font['12']},
             {'xy': (0, 18), 'text': text2, 'fill': 255, 'font': font['12']},
@@ -80,39 +86,76 @@ def put_disk_info():
     return page
 
 
-def gen_pages():
-    pages = {
-        0: [
+
+def gen_pages(idx):
+
+    if idx == 0:
+        return [
             {'xy': (0, -2), 'text': misc.get_info('up'), 'fill': 255, 'font': font['11']},
             {'xy': (0, 10), 'text': misc.get_cpu_temp(), 'fill': 255, 'font': font['11']},
             {'xy': (0, 21), 'text': misc.get_info('ip'), 'fill': 255, 'font': font['11']},
-        ],
-        1: [
+        ]
+    elif idx == 1:
+        return [
             {'xy': (0, 2), 'text': misc.get_info('cpu'), 'fill': 255, 'font': font['12']},
             {'xy': (0, 18), 'text': misc.get_info('men'), 'fill': 255, 'font': font['12']},
-        ],
-        2: put_disk_info()
-    }
-
-    return pages
-
-
-def slider(lock):
-    with lock:
-        for item in misc.slider_next(gen_pages()):
-            draw.text(**item)
-        disp_show()
-
-
-def auto_slider(lock):
-    while misc.conf['slider']['auto']:
-        slider(lock)
-        misc.slider_sleep()
+        ]
     else:
-        slider(lock)
+        return put_disk_info()
 
+
+
+idx = -1
+is_blank = False
+
+def blank():
+    global idx, is_blank
+
+    if not is_blank:
+        disp_show()
+        
+    idx = -1
+    is_blank = True
+
+def refresh(next_page = False):
+
+
+    global idx, is_blank
+
+    if next_page:
+        idx += 1
+        idx %= 3
+
+    for item in gen_pages(idx):
+        draw.text(**item)
+    disp_show()
+
+    is_blank = False
+
+def auto_slider(slide_event):
+
+    last_event = time.monotonic()
+    sleep_time = misc.get_sleep_time()
+    slide_time = misc.get_slide_time()
+
+    slide = True
+    while True:
+        now = time.monotonic()
+
+        if slide:
+            last_event = now
+
+        if sleep_time > 0 and now - last_event > sleep_time:
+            blank()
+        elif misc.get_slide_active() or slide:
+            refresh(True)
+        else:
+            refresh()
+        slide_event.clear()
+        slide_event.wait(slide_time)
+        slide = slide_event.is_set()
 
 if __name__ == '__main__':
     # for test
-    lock = mp.Lock()
-    auto_slider(lock)
+    event = threading.Event()
+    auto_slider(event)

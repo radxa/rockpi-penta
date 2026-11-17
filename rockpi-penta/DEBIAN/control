@@ -1,9 +1,9 @@
 Package: rockpi-penta
-Version: 0.2
+Version: 0.4.0
 Architecture: all
 Maintainer: Radxa <dev@radxa.com>
-Depends: python3, python3-libgpiod, python3-pillow, python3-pip
+Depends: python3, python3-venv, python3-libgpiod, python3-pillow
 Section: utils
 Priority: optional
-Homepage: https://github.com/radxa/rockpi-penta
+Homepage: https://github.com/Athos97/rockpi-penta
 Description: Rockpi Penta Hat
