@@ -46,6 +46,9 @@ model=$(tr -d '\0' </proc/device-tree/model)
 case "$model" in
 *"Raspberry Pi 5"*)
   raspi-config nonint do_i2c 0 >/dev/null || true
+  udevadm control --reload-rules || true
+  udevadm trigger --subsystem-match=gpio --action=add || true
+  udevadm settle || true
   cp /usr/bin/rockpi-penta/env/rpi5.env /etc/rockpi-penta.env
   systemctl start rockpi-penta.service
   ;;

@@ -5,9 +5,8 @@ import time
 import subprocess
 import multiprocessing as mp
 import traceback
-from datetime import timedelta
 
-import gpiod
+import hatgpio
 from configparser import ConfigParser
 from collections import defaultdict, OrderedDict
 
@@ -110,59 +109,47 @@ def read_conf():
 
 
 def read_key_events(chip_device, chip_line):
+    """Turn button presses into 'click', 'twice' and 'press' events.
 
-    time_long_press   = float(conf['time']['press'])
+    Written by Igor Petrov for libgpiod 2 (event based instead of polling); it now
+    runs on hatgpio, so the same logic works on libgpiod 1 as well.
+    """
+    time_long_press = float(conf['time']['press'])
     time_double_click = float(conf['time']['twice'])
 
-    event_single = "click"
-    event_double = "twice"
-    event_long = "press"
+    line = hatgpio.InputLine(chip_device, chip_line, consumer="hat_button")
+    states = hatgpio.button_states(line)
 
-    setting = gpiod.LineSettings(
-        edge_detection=gpiod.line.Edge.BOTH,
-        debounce_period=timedelta(milliseconds=10)
-    )
+    click_count = 0
+    wait = None
+    ignore_release = False
+    state = next(states)
 
-    with gpiod.request_lines(
-        chip_device,
-        consumer="hat_button",
-        config={chip_line: setting},
-    ) as request:
-
-        click_count = 0
-        wait = None
-        ignore_release = False
-
-        while True:
-            if not request.wait_edge_events(wait):
-                if click_count == 0:        
-                    ignore_release = True
-                    yield event_long
+    while True:
+        if state is None:  # the wait ran out
+            if click_count == 0:
+                ignore_release = True
+                yield "press"
+            if click_count == 1:
+                yield "click"
+            click_count = 0
+            wait = None
+        elif state:  # pressed
+            if click_count == 0:  # arm long press detection
+                wait = time_long_press
+        else:  # released
+            if ignore_release:
+                ignore_release = False
+            else:
+                click_count += 1
                 if click_count == 1:
-                    yield event_single
-                click_count = 0
-                wait = None
-                continue
+                    wait = time_double_click
+                if click_count == 2 and wait == time_double_click:
+                    click_count = 0
+                    wait = None
+                    yield "twice"
+        state = states.send(wait)
 
-            for event in request.read_edge_events():
-                edge_event = event.event_type
-
-                if edge_event == gpiod.EdgeEvent.Type.FALLING_EDGE: # pressed
-                    if click_count == 0: # arm longpress detection
-                        wait = time_long_press 
-
-                elif edge_event == gpiod.EdgeEvent.Type.RISING_EDGE: # released
-                    if ignore_release:
-                        ignore_release = False
-                        continue
-                    click_count += 1
-                    if click_count == 1:
-                        wait = time_double_click 
-                    if click_count == 2 and wait == time_double_click:
-                        click_count = 0
-                        wait = None
-                        yield event_double
-                     
 
 def watch_key(q=None):
 

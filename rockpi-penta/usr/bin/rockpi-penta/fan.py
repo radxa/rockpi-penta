@@ -4,8 +4,7 @@ import time
 import traceback
 import threading
 
-import gpiod
-
+import hatgpio
 import misc
 
 pin = None
@@ -46,25 +45,29 @@ class Pwm:
 
 
 class Gpio:
+    """Software PWM on a plain GPIO line.
+
+    `write()` takes the fraction of each period the line stays low (see
+    misc.duty2dc). At the ends of the range the line is held at a fixed level
+    instead of pulsing, so "off" really is off and "full" really is full.
+    """
 
     def _tr(self):
-        
-        setting = gpiod.LineSettings(
-                    direction=gpiod.line.Direction.OUTPUT, 
-                    output_value=gpiod.line.Value.INACTIVE)
+        line = hatgpio.OutputLine(self.gpio, self.line, consumer="fan")
+        while True:
+            high, low = self.value
+            if low <= 0:
+                line.set(True)
+                time.sleep(self.period_s)
+            elif high <= 0:
+                line.set(False)
+                time.sleep(self.period_s)
+            else:
+                line.set(True)
+                time.sleep(high)
+                line.set(False)
+                time.sleep(low)
 
-        with gpiod.request_lines(
-            self.gpio,
-            consumer="fan",
-            config={ self.line: setting },
-        ) as request:
-            while True:
-                request.set_value(self.line, gpiod.line.Value.ACTIVE)
-                time.sleep(self.value[0])
-                request.set_value(self.line, gpiod.line.Value.INACTIVE)
-                time.sleep(self.value[1])
-
-    
     def __init__(self, period_s):
 
         self.gpio = os.environ['FAN_CHIP']
@@ -75,8 +78,8 @@ class Gpio:
         self.thread.start()
 
     def write(self, duty):
-        self.value[1] = duty * self.period_s
-        self.value[0] = self.period_s - self.value[1]
+        low = min(max(duty, 0.0), 1.0) * self.period_s
+        self.value = [self.period_s - low, low]
 
 
 def read_temp():
