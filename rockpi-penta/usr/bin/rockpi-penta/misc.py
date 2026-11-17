@@ -53,57 +53,63 @@ def get_cpu_temp():
     return temp
 
 
-def read_conf():
+CONF_FILE = '/etc/rockpi-penta.conf'
+
+# section, key, default, type, older names still accepted
+CONF_KEYS = [
+    ('fan', 'lv0', 35.0, float, ()),
+    ('fan', 'lv1', 40.0, float, ()),
+    ('fan', 'lv2', 45.0, float, ()),
+    ('fan', 'lv3', 50.0, float, ()),
+    ('key', 'click', 'slider', str, ()),
+    ('key', 'twice', 'switch', str, ()),
+    ('key', 'press', 'none', str, ()),
+    ('time', 'twice', 0.7, float, ()),
+    ('time', 'press', 1.8, float, ()),
+    ('oled', 'rotate', False, bool, ()),
+    ('oled', 'f-temp', False, bool, ()),
+    ('oled', 'auto_slide', True, bool, (('slider', 'auto'),)),
+    ('oled', 'auto_slide_time', 10.0, float, (('slider', 'time'),)),
+    ('oled', 'sleep', 0.0, float, ()),
+]
+
+
+def _read_value(cfg, section, key, kind):
+    if kind is bool:
+        return cfg.getboolean(section, key)
+    if kind is float:
+        return cfg.getfloat(section, key)
+    return cfg.get(section, key).strip()
+
+
+def read_conf(path=CONF_FILE):
+    """Read the configuration key by key.
+
+    A missing or invalid key falls back to its own default and is reported, so a
+    configuration file written for an older version keeps the values it has
+    instead of being discarded as a whole.
+    """
     conf = defaultdict(dict)
-
+    cfg = ConfigParser()
     try:
-        cfg = ConfigParser()
-        cfg.read('/etc/rockpi-penta.conf')
-        # fan
-        conf['fan']['lv0'] = cfg.getfloat('fan', 'lv0')
-        conf['fan']['lv1'] = cfg.getfloat('fan', 'lv1')
-        conf['fan']['lv2'] = cfg.getfloat('fan', 'lv2')
-        conf['fan']['lv3'] = cfg.getfloat('fan', 'lv3')
-        # key
-        conf['key']['click'] = cfg.get('key', 'click')
-        conf['key']['twice'] = cfg.get('key', 'twice')
-        conf['key']['press'] = cfg.get('key', 'press')
-        # time
-        conf['time']['twice'] = cfg.getfloat('time', 'twice')
-        conf['time']['press'] = cfg.getfloat('time', 'press')
-        # other
-
-        conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
-        conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
-        conf['oled']['auto_slide'] = cfg.getboolean('oled', 'auto_slide')
-        conf['oled']['auto_slide_time'] = cfg.getfloat('oled', 'auto_slide_time')
-        conf['oled']['sleep'] = cfg.getfloat('oled', 'sleep')
-
-        extra_disks = cfg.get('disk', 'extra', fallback="")
-        if extra_disks != "":
-            extra_disks = extra_disks.split(",")
-        conf["disk"] = extra_disks
-
+        cfg.read(path)
     except Exception:
         traceback.print_exc()
-        # fan
-        conf['fan']['lv0'] = 35
-        conf['fan']['lv1'] = 40
-        conf['fan']['lv2'] = 45
-        conf['fan']['lv3'] = 50
-        # key
-        conf['key']['click'] = 'slider'
-        conf['key']['twice'] = 'switch'
-        conf['key']['press'] = 'none'
-        # time
-        conf['time']['twice'] = 0.7  # second
-        conf['time']['press'] = 1.8
-        # other
-        conf['oled']['rotate'] = False
-        conf['oled']['f-temp'] = False
-        conf['oled']['auto_slide'] = True
-        conf['oled']['auto_slide_time'] = 10  # second
-        conf['oled']['sleep'] = 0  # second
+
+    for section, key, default, kind, old_names in CONF_KEYS:
+        value = default
+        for sec, name in ((section, key),) + tuple(old_names):
+            if not cfg.has_option(sec, name):
+                continue
+            try:
+                value = _read_value(cfg, sec, name, kind)
+            except ValueError:
+                print(f"Warning: [{sec}] {name} in {path} is not valid, using {default}")
+            break
+        conf[section][key] = value
+
+    extra_disks = cfg.get('disk', 'extra', fallback="").strip()
+    conf['disk'] = [d.strip() for d in extra_disks.split(",") if d.strip()] if extra_disks else []
 
     return conf
 
