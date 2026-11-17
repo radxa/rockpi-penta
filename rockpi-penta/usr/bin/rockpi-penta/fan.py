@@ -135,7 +135,10 @@ def running():
         pin.period_us(40)
         pin.enable(True)
     else:
-        pin = Gpio(0.025)
+        # Software PWM. The original 40 Hz left the HAT fan stalled below 75%
+        # duty; at 100 Hz it runs, and starts, from 25%. Costs well under 1%
+        # of a core either way.
+        pin = Gpio(1.0 / misc.conf['fan']['pwm_freq'])
     while True:
 
         dc = get_dc()

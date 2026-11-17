@@ -67,6 +67,7 @@ CONF_KEYS = [
     ('fan', 'disk_lv1', 40.0, float, ()),
     ('fan', 'disk_lv2', 43.0, float, ()),
     ('fan', 'disk_lv3', 46.0, float, ()),
+    ('fan', 'pwm_freq', 100.0, float, ()),
     ('key', 'click', 'slider', str, ()),
     ('key', 'twice', 'switch', str, ()),
     ('key', 'press', 'none', str, ()),
@@ -121,6 +122,10 @@ def read_conf(path=CONF_FILE):
     conf['fan']['source'] = source
     disks = conf['fan']['disks'].lower()
     conf['fan']['disks'] = disks if disks in ('auto', 'all') else disks.replace(',', ' ').split()
+    freq = conf['fan']['pwm_freq']
+    if not 1 <= freq <= 1000:
+        print(f"Warning: [fan] pwm_freq = {freq:g} in {path} is outside 1-1000 Hz, using 100")
+        conf['fan']['pwm_freq'] = 100.0
 
     extra_disks = cfg.get('disk', 'extra', fallback="").strip()
     conf['disk'] = [d.strip() for d in extra_disks.split(",") if d.strip()] if extra_disks else []

@@ -19,6 +19,9 @@ On top of [Radxa's program](https://github.com/radxa/rockpi-penta):
   to avoid burn-in; the first press wakes it up.
 * **Fan driven by the disks or the CPU**: the fan blows over the disks, so it
   can follow the hottest disk instead of the CPU temperature.
+* **All four fan speeds work**: the software PWM runs at a configurable
+  frequency (100 Hz by default) instead of a fixed 40 Hz, at which the fan
+  stalled below 75%.
 * **Debian 12 and 13**: runs on both libgpiod 1 (Debian 12, bookworm) and
   libgpiod 2 (Debian 13, trixie).
 * **Stable GPIO naming on the Raspberry Pi 5**: the header chip is looked up by
@@ -45,9 +48,13 @@ disk_lv0 = 35     # disk thresholds, 'C
 disk_lv1 = 40
 disk_lv2 = 43
 disk_lv3 = 46
+pwm_freq = 100    # software PWM frequency, Hz
 ```
 
-Below the first threshold the fan is off. Disk temperatures are read from the
+Below the first threshold the fan is off. On boards without hardware PWM (such
+as the Raspberry Pi) the fan is pulsed in software; at the original 40 Hz the
+HAT fan stalls below 75% power, so the default is now 100 Hz, where it runs
+from 25%. Raise or lower `pwm_freq` if your fan stalls or whines. Disk temperatures are read from the
 kernel's `drivetemp` driver, which the package loads at boot; if no disk can be
 read, the fan follows the CPU with the CPU thresholds.
 
