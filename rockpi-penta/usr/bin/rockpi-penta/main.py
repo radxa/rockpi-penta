@@ -15,11 +15,11 @@ except Exception as ex:
     top_board = False
 
 q = queue.Queue()
-lock = threading.Lock()
+slide_event = threading.Event()
 
 action = {
     'none': lambda: 'nothing',
-    'slider': lambda: oled.slider(lock),
+    'slider': lambda: slide_event.set(),
     'switch': lambda: misc.fan_switch(),
     'reboot': lambda: misc.check_call('reboot'),
     'poweroff': lambda: misc.check_call('poweroff'),
@@ -35,10 +35,9 @@ def receive_key(q):
 if __name__ == '__main__':
 
     if top_board:
-        oled.welcome()
         p0 = threading.Thread(target=receive_key, args=(q,), daemon=True)
         p1 = threading.Thread(target=misc.watch_key, args=(q,), daemon=True)
-        p2 = threading.Thread(target=oled.auto_slider, args=(lock,), daemon=True)
+        p2 = threading.Thread(target=oled.auto_slider, args=(slide_event,), daemon=True)
         p3 = threading.Thread(target=fan.running, daemon=True)
 
         p0.start()

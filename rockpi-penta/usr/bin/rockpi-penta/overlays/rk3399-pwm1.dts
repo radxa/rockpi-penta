@@ -1,0 +1,24 @@
+/dts-v1/;
+
+/ {
+
+	metadata {
+		title = "Enable PWM1";
+		compatible = "rockchip,rk3399";
+		category = "misc";
+		exclusive = "GPIO4_C6";
+		description = "Enable PWM1 on pin 13.";
+	};
+
+	fragment@0 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	__fixups__ {
+		pwm1 = "/fragment@0:target:0";
+	};
+};

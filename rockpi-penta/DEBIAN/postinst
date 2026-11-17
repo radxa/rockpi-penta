@@ -31,11 +31,13 @@ armbian_require_overlay() {
   fi
 }
 
-if [ "$(python3 -c 'import sys; print(f"{sys.version_info.minor >= 11}")')" = "True" ]; then
-  pip3 install adafruit-circuitpython-ssd1306 --break-system-packages
-else
-  pip3 install adafruit-circuitpython-ssd1306
-fi
+
+# create venv and install pip-only only dependency
+python3 -m venv --system-site-packages /usr/bin/rockpi-penta/venv
+source /usr/bin/rockpi-penta/venv/bin/activate
+pip install adafruit-circuitpython-ssd1306
+deactivate 
+
 
 systemctl enable rockpi-penta.service
 
@@ -51,6 +53,18 @@ case "$model" in
   raspi-config nonint do_i2c 0 >/dev/null || true
   mv /usr/bin/rockpi-penta/env/rpi4.env /etc/rockpi-penta.env
   systemctl start rockpi-penta.service
+  ;;
+*"ROCK 5C"*)
+  if [ "$(is_armbian)" = "true" ]; then
+    armbian_require_overlay rk3588-i2c8-m2 rk3588-pwm14-m1
+    cp /usr/bin/rockpi-penta/env/rock_5c_armbian.env /etc/rockpi-penta.env
+  else
+    mv /boot/dtbo/rk3588-i2c8-m2.dtbo.disabled /boot/dtbo/rk3588-i2c8-m2.dtbo || true
+    mv /boot/dtbo/rk3588-pwm14-m1.dtbo.disabled /boot/dtbo/rk3588-pwm14-m1.dtbo || true
+    cp /usr/bin/rockpi-penta/env/rock_5a.env /etc/rockpi-penta.env
+    u-boot-update || true
+  fi
+  checkReboot
   ;;
 *"ROCK 5"*)
   if [ "$(is_armbian)" = "true" ]; then

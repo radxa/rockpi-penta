@@ -5,6 +5,7 @@ import time
 import subprocess
 import multiprocessing as mp
 import traceback
+from datetime import timedelta
 
 import gpiod
 from configparser import ConfigParser
@@ -20,7 +21,12 @@ cmds = {
     'disk': "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
 }
 
-lv2dc = OrderedDict({'lv3': 0, 'lv2': 0.25, 'lv1': 0.5, 'lv0': 0.75})
+FAN_DUTY_OFF = 0.0
+FAN_DUTY_ON  = 1.0 
+lv2dc = OrderedDict({'lv3': 1.0, 'lv2':0.75, 'lv1': 0.5, 'lv0': 0.25})
+duty2dc = lambda x: 1.0 - x
+
+
 
 
 def check_output(cmd):
@@ -67,10 +73,18 @@ def read_conf():
         conf['time']['twice'] = cfg.getfloat('time', 'twice')
         conf['time']['press'] = cfg.getfloat('time', 'press')
         # other
-        conf['slider']['auto'] = cfg.getboolean('slider', 'auto')
-        conf['slider']['time'] = cfg.getfloat('slider', 'time')
+
         conf['oled']['rotate'] = cfg.getboolean('oled', 'rotate')
         conf['oled']['f-temp'] = cfg.getboolean('oled', 'f-temp')
+        conf['oled']['auto_slide'] = cfg.getboolean('oled', 'auto_slide')
+        conf['oled']['auto_slide_time'] = cfg.getfloat('oled', 'auto_slide_time')
+        conf['oled']['sleep'] = cfg.getfloat('oled', 'sleep')
+
+        extra_disks = cfg.get('disk', 'extra', fallback="")
+        if extra_disks != "":
+            extra_disks = extra_disks.split(",")
+        conf["disk"] = extra_disks
+
     except Exception:
         traceback.print_exc()
         # fan
@@ -86,43 +100,77 @@ def read_conf():
         conf['time']['twice'] = 0.7  # second
         conf['time']['press'] = 1.8
         # other
-        conf['slider']['auto'] = True
-        conf['slider']['time'] = 10  # second
         conf['oled']['rotate'] = False
         conf['oled']['f-temp'] = False
+        conf['oled']['auto_slide'] = True
+        conf['oled']['auto_slide_time'] = 10  # second
+        conf['oled']['sleep'] = 0  # second
 
     return conf
 
 
-def read_key(pattern, size):
-    CHIP_NAME = os.environ['BUTTON_CHIP']
-    LINE_NUMBER = os.environ['BUTTON_LINE']
+def read_key_events(chip_device, chip_line):
 
-    s = ''
-    chip = gpiod.Chip(str(CHIP_NAME))
-    line = chip.get_line(int(LINE_NUMBER))
-    line.request(consumer='hat_button', type=gpiod.LINE_REQ_DIR_OUT)
-    line.set_value(1)
+    time_long_press   = float(conf['time']['press'])
+    time_double_click = float(conf['time']['twice'])
 
-    while True:
-        s = s[-size:] + str(line.get_value())
-        for t, p in pattern.items():
-            if p.match(s):
-                return t
-        time.sleep(0.1)
+    event_single = "click"
+    event_double = "twice"
+    event_long = "press"
 
+    setting = gpiod.LineSettings(
+        edge_detection=gpiod.line.Edge.BOTH,
+        debounce_period=timedelta(milliseconds=10)
+    )
+
+    with gpiod.request_lines(
+        chip_device,
+        consumer="hat_button",
+        config={chip_line: setting},
+    ) as request:
+
+        click_count = 0
+        wait = None
+        ignore_release = False
+
+        while True:
+            if not request.wait_edge_events(wait):
+                if click_count == 0:        
+                    ignore_release = True
+                    yield event_long
+                if click_count == 1:
+                    yield event_single
+                click_count = 0
+                wait = None
+                continue
+
+            for event in request.read_edge_events():
+                edge_event = event.event_type
+
+                if edge_event == gpiod.EdgeEvent.Type.FALLING_EDGE: # pressed
+                    if click_count == 0: # arm longpress detection
+                        wait = time_long_press 
+
+                elif edge_event == gpiod.EdgeEvent.Type.RISING_EDGE: # released
+                    if ignore_release:
+                        ignore_release = False
+                        continue
+                    click_count += 1
+                    if click_count == 1:
+                        wait = time_double_click 
+                    if click_count == 2 and wait == time_double_click:
+                        click_count = 0
+                        wait = None
+                        yield event_double
+                     
 
 def watch_key(q=None):
-    size = int(conf['time']['press'] * 10)
-    wait = int(conf['time']['twice'] * 10)
-    pattern = {
-        'click': re.compile(r'1+0+1{%d,}' % wait),
-        'twice': re.compile(r'1+0+1+0+1{3,}'),
-        'press': re.compile(r'1+0{%d,}' % size),
-    }
 
-    while True:
-        q.put(read_key(pattern, size))
+    chip_device = os.environ['BUTTON_CHIP']
+    chip_line = os.environ['BUTTON_LINE']
+
+    for key_event in read_key_events(chip_device, chip_line):
+        q.put(key_event)
 
 
 def get_disk_info(cache={}):
@@ -138,21 +186,28 @@ def get_disk_info(cache={}):
 
     return cache['info']
 
+def get_slide_active():
+    return conf['oled']['auto_slide']
 
-def slider_next(pages):
-    conf['idx'].value += 1
-    return pages[conf['idx'].value % len(pages)]
+def get_slide_time():
+    return conf['oled']['auto_slide_time']
 
-
-def slider_sleep():
-    time.sleep(conf['slider']['time'])
-
+def get_sleep_time():
+    return conf['oled']['sleep']
 
 def fan_temp2dc(t):
+
+    result = FAN_DUTY_OFF
     for lv, dc in lv2dc.items():
         if t >= conf['fan'][lv]:
-            return dc
-    return 0.999
+            result = dc
+            break
+
+    #print(f"t = {t:.3f}°C -> {result:.3f}")
+
+    duty = duty2dc(result)
+
+    return duty
 
 
 def fan_switch():
@@ -163,5 +218,5 @@ def get_func(key):
     return conf['key'].get(key, 'none')
 
 
-conf = {'disk': [], 'idx': mp.Value('d', -1), 'run': mp.Value('d', 1)}
+conf = {'disk': [], 'run': mp.Value('d', 1)}
 conf.update(read_conf())

@@ -47,19 +47,31 @@ class Pwm:
 
 class Gpio:
 
-    def tr(self):
-        while True:
-            self.line.set_value(1)
-            time.sleep(self.value[0])
-            self.line.set_value(0)
-            time.sleep(self.value[1])
+    def _tr(self):
+        
+        setting = gpiod.LineSettings(
+                    direction=gpiod.line.Direction.OUTPUT, 
+                    output_value=gpiod.line.Value.INACTIVE)
 
+        with gpiod.request_lines(
+            self.gpio,
+            consumer="fan",
+            config={ self.line: setting },
+        ) as request:
+            while True:
+                request.set_value(self.line, gpiod.line.Value.ACTIVE)
+                time.sleep(self.value[0])
+                request.set_value(self.line, gpiod.line.Value.INACTIVE)
+                time.sleep(self.value[1])
+
+    
     def __init__(self, period_s):
-        self.line = gpiod.Chip(os.environ['FAN_CHIP']).get_line(int(os.environ['FAN_LINE']))
-        self.line.request(consumer='fan', type=gpiod.LINE_REQ_DIR_OUT)
+
+        self.gpio = os.environ['FAN_CHIP']
+        self.line = int(os.environ['FAN_LINE'])
         self.value = [period_s / 2, period_s / 2]
         self.period_s = period_s
-        self.thread = threading.Thread(target=self.tr, daemon=True)
+        self.thread = threading.Thread(target=self._tr, daemon=True)
         self.thread.start()
 
     def write(self, duty):
@@ -75,9 +87,9 @@ def read_temp():
 
 def get_dc(cache={}):
     if misc.conf['run'].value == 0:
-        return 0.999
+        return misc.duty2dc(misc.FAN_DUTY_OFF)
 
-    if time.time() - cache.get('time', 0) > 60:
+    if time.time() - cache.get('time', 0) > 10:
         cache['time'] = time.time()
         cache['dc'] = misc.fan_temp2dc(read_temp())
 
@@ -100,7 +112,9 @@ def running():
     else:
         pin = Gpio(0.025)
     while True:
-        change_dc(get_dc())
+
+        dc = get_dc()
+        change_dc(dc)
         time.sleep(1)
 
 
